@@ -1,0 +1,384 @@
+// Prisma Schema for KhaanaDa
+// Database: PostgreSQL
+// 
+// Design Decisions:
+// 1. All monetary values stored as integers in paisa (1 PKR = 100 paisa) to avoid floating-point errors
+// 2. UUIDs for primary keys to prevent enumeration attacks
+// 3. Soft deletes for audit trail (deletedAt fields)
+// 4. Comprehensive indexing for query performance
+// 5. Enum types for status fields to ensure data integrity
+// 6. Relations with cascade rules for data consistency
+// 7. Timestamps on all entities for audit purposes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  CUSTOMER
+  RESTAURANT_OWNER
+  RIDER
+  SUPPORT_AGENT
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  phone         String    @unique
+  name          String
+  passwordHash  String
+  role          UserRole  @default(CUSTOMER)
+  emailVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  
+  // Relations
+  addresses     Address[]
+  orders        Order[]
+  reviews       Review[]
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+// ============================================================================
+// ADDRESSES
+// ============================================================================
+
+model Address {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  label     String  // "Home", "Office", etc.
+  street    String
+  area      String
+  city      String
+  latitude  Float?
+  longitude Float?
+  isDefault Boolean @default(false)
+  
+  // Relations
+  orders    Order[]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([city])
+}
+
+// ============================================================================
+// RESTAURANTS
+// ============================================================================
+
+model Restaurant {
+  id              String   @id @default(uuid())
+  ownerId         String
+  name            String
+  nameUrdu        String?
+  description     String?
+  descriptionUrdu String?
+  phone           String
+  address         String
+  city            String
+  area            String
+  latitude        Float?
+  longitude       Float?
+  
+  // Business Info
+  cuisine         String[] // Array of cuisine types
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  deliveryTime    String   // e.g., "25-35 min"
+  deliveryFee     Int      // In paisa (PKR * 100)
+  minOrder        Int      // In paisa (PKR * 100)
+  imageUrl        String?
+  
+  // Status
+  isOpen          Boolean  @default(false)
+  isApproved      Boolean  @default(false)
+  isFeatured      Boolean  @default(false)
+  
+  // Operating Hours (JSON for flexibility)
+  openingHours    Json     // [{day: "Mon-Fri", open: "10:00", close: "22:00"}]
+  
+  // Relations
+  menuCategories  MenuCategory[]
+  orders          Order[]
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+  
+  @@index([city])
+  @@index([isApproved])
+  @@index([isOpen])
+  @@index([rating])
+}
+
+// ============================================================================
+// MENU
+// ============================================================================
+
+model MenuCategory {
+  id           String     @id @default(uuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  
+  name         String
+  nameUrdu     String?
+  sortOrder    Int        @default(0)
+  
+  // Relations
+  items        MenuItem[]
+  
+  // Timestamps
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  @@index([restaurantId])
+}
+
+model MenuItem {
+  id           String       @id @default(uuid())
+  categoryId   String
+  category     MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  name         String
+  nameUrdu     String?
+  description  String?
+  descriptionUrdu String?
+  price        Int          // In paisa (PKR * 100)
+  imageUrl     String?
+  
+  // Dietary Info
+  isVegetarian Boolean      @default(false)
+  isVegan      Boolean      @default(false)
+  isSpicy      Boolean      @default(false)
+  
+  // Status
+  isAvailable  Boolean      @default(true)
+  isPopular    Boolean      @default(false)
+  
+  // Relations
+  orderItems   OrderItem[]
+  modifiers    MenuItemModifier[]
+  
+  // Timestamps
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  @@index([categoryId])
+  @@index([isAvailable])
+}
+
+model Modifier {
+  id        String  @id @default(uuid())
+  name      String
+  nameUrdu  String?
+  isRequired Boolean @default(false)
+  
+  // Relations
+  menuItems MenuItemModifier[]
+  options   ModifierOption[]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ModifierOption {
+  id         String   @id @default(uuid())
+  modifierId String
+  modifier   Modifier @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  
+  name       String
+  nameUrdu   String?
+  price      Int      // In paisa (PKR * 100)
+  
+  // Relations
+  menuItems  MenuItemModifier[]
+  
+  // Timestamps
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([modifierId])
+}
+
+model MenuItemModifier {
+  id             String         @id @default(uuid())
+  menuItemId     String
+  menuItem       MenuItem       @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  
+  modifierId     String
+  modifier       Modifier       @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  
+  optionId       String
+  option         ModifierOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt      DateTime       @default(now())
+  
+  @@unique([menuItemId, modifierId, optionId])
+  @@index([menuItemId])
+}
+
+// ============================================================================
+// ORDERS
+// ============================================================================
+
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique // Human-readable: KD-ABC123
+  
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  restaurantId    String
+  restaurant      Restaurant    @relation(fields: [restaurantId], references: [id])
+  
+  addressId       String
+  address         Address       @relation(fields: [addressId], references: [id])
+  
+  // Financial (all in paisa)
+  subtotal        Int
+  deliveryFee     Int
+  tax             Int
+  discount        Int           @default(0)
+  total           Int
+  
+  // Payment
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  // Status
+  status          OrderStatus   @default(PENDING)
+  
+  // Timing
+  estimatedDelivery DateTime?
+  
+  // Relations
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([userId])
+  @@index([restaurantId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  menuItemId  String
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id])
+  
+  quantity    Int
+  unitPrice   Int      // In paisa (price at time of order)
+  notes       String?
+  
+  // Modifiers (JSON for flexibility)
+  modifiers   Json?    // [{modifierId, optionId, name, price}]
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  status    OrderStatus
+  message   String
+  metadata  Json?       // Additional data (rider location, etc.)
+  
+  createdAt DateTime    @default(now())
+  
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// REVIEWS
+// ============================================================================
+
+model Review {
+  id           String     @id @default(uuid())
+  
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  
+  restaurantId String
+  // Note: We don't add a direct relation to Restaurant to avoid circular dependencies
+  // Restaurant can be queried by restaurantId
+  
+  orderId      String?    // Optional: link to order
+  rating       Int        // 1-5
+  comment      String?
+  isVisible    Boolean    @default(true)
+  
+  // Timestamps
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  @@unique([userId, restaurantId, orderId])
+  @@index([restaurantId])
+  @@index([userId])
+}

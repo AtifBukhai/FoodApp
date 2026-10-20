@@ -453,14 +453,19 @@ class MockApiClient implements ApiClient {
 /**
  * Creates the appropriate API client based on environment.
  * 
- * Currently returns MockApiClient for demo mode.
- * When backend is ready, switch to HttpApiClient.
+ * Uses VITE_USE_API environment variable to switch between:
+ * - 'true': Use real backend API (HttpApiClient)
+ * - 'false' or undefined: Use mock data (MockApiClient)
  */
 export function createApiClient(): ApiClient {
-  // TODO: When backend is ready, check environment and return appropriate client
-  // if (import.meta.env.PROD && import.meta.env.VITE_API_URL) {
-  //   return new HttpApiClient(DEFAULT_CONFIG);
-  // }
+  const useApi = import.meta.env.VITE_USE_API === 'true';
+  
+  if (useApi && import.meta.env.VITE_API_URL) {
+    console.log('🌐 Using backend API:', import.meta.env.VITE_API_URL);
+    return new HttpApiClient(DEFAULT_CONFIG);
+  }
+  
+  console.log('📦 Using demo mode with mock data');
   return new MockApiClient();
 }
 
@@ -468,16 +473,13 @@ export function createApiClient(): ApiClient {
 export const apiClient = createApiClient();
 
 // ============================================================================
-// HTTP API Client (For Future Backend Integration)
+// HTTP API Client (For Backend Integration)
 // ============================================================================
 
 /**
  * HTTP-based API client for real backend integration.
- * Uncomment and implement when backend is ready.
- * 
- * TODO: Implement with fetch/axios when backend is available
+ * Connects to the NestJS backend API.
  */
-/*
 class HttpApiClient implements ApiClient {
   private config: ApiConfig;
   
@@ -487,12 +489,18 @@ class HttpApiClient implements ApiClient {
   
   private async request<T>(method: string, path: string, body?: any): Promise<ApiResponse<T>> {
     try {
+      const token = this.getToken();
+      const headers: Record<string, string> = {
+        ...this.config.headers,
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${this.config.baseUrl}${path}`, {
         method,
-        headers: {
-          ...this.config.headers,
-          'Authorization': `Bearer ${this.getToken()}`,
-        },
+        headers,
         body: body ? JSON.stringify(body) : undefined,
       });
       
@@ -504,6 +512,7 @@ class HttpApiClient implements ApiClient {
       
       return { success: true, data };
     } catch (error) {
+      console.error('API request failed:', error);
       return { success: false, error: 'Network error' };
     }
   }
@@ -512,7 +521,111 @@ class HttpApiClient implements ApiClient {
     return localStorage.getItem('khaanada_token') || '';
   }
   
-  // Implement all ApiClient methods using this.request()
-  // ...
+  private setToken(token: string): void {
+    localStorage.setItem('khaanada_token', token);
+  }
+  
+  // Authentication
+  async login(request: LoginRequest): Promise<ApiResponse<AuthResponse>> {
+    const response = await this.request<AuthResponse>('POST', '/auth/login', request);
+    if (response.success && response.data) {
+      this.setToken(response.data.token);
+    }
+    return response;
+  }
+  
+  async register(request: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
+    const response = await this.request<AuthResponse>('POST', '/auth/register', request);
+    if (response.success && response.data) {
+      this.setToken(response.data.token);
+    }
+    return response;
+  }
+  
+  async logout(): Promise<ApiResponse<void>> {
+    localStorage.removeItem('khaanada_token');
+    return this.request<void>('POST', '/auth/logout');
+  }
+  
+  async refreshToken(): Promise<ApiResponse<{ token: string }>> {
+    return this.request<{ token: string }>('POST', '/auth/refresh');
+  }
+  
+  async getCurrentUser(): Promise<ApiResponse<User>> {
+    return this.request<User>('GET', '/users/me');
+  }
+  
+  // Restaurants
+  async getRestaurants(filters?: RestaurantFilters): Promise<ApiResponse<PaginatedResponse<Restaurant>>> {
+    const params = new URLSearchParams();
+    if (filters?.cuisine) params.append('cuisine', filters.cuisine);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    const queryString = params.toString();
+    return this.request<PaginatedResponse<Restaurant>>('GET', `/restaurants${queryString ? '?' + queryString : ''}`);
+  }
+  
+  async getRestaurant(id: string): Promise<ApiResponse<Restaurant>> {
+    return this.request<Restaurant>('GET', `/restaurants/${id}`);
+  }
+  
+  async getRestaurantMenu(restaurantId: string): Promise<ApiResponse<MenuItem[]>> {
+    return this.request<MenuItem[]>('GET', `/restaurants/${restaurantId}/menu`);
+  }
+  
+  async getCategories(): Promise<ApiResponse<Category[]>> {
+    return this.request<Category[]>('GET', '/restaurants/categories');
+  }
+  
+  // Cart & Checkout
+  async calculateCart(items: CartItem[], restaurantId: string): Promise<ApiResponse<{
+    subtotal: number;
+    deliveryFee: number;
+    tax: number;
+    discount: number;
+    total: number;
+  }>> {
+    return this.request('POST', '/cart/calculate', { items, restaurantId });
+  }
+  
+  async validateOrder(request: CreateOrderRequest): Promise<ApiResponse<{ valid: boolean; errors?: string[] }>> {
+    return this.request('POST', '/checkout/validate', request);
+  }
+  
+  // Orders
+  async createOrder(request: CreateOrderRequest): Promise<ApiResponse<Order>> {
+    return this.request<Order>('POST', '/orders', request);
+  }
+  
+  async getOrders(): Promise<ApiResponse<Order[]>> {
+    return this.request<Order[]>('GET', '/orders');
+  }
+  
+  async getOrder(id: string): Promise<ApiResponse<Order>> {
+    return this.request<Order>('GET', `/orders/${id}`);
+  }
+  
+  async cancelOrder(id: string): Promise<ApiResponse<Order>> {
+    return this.request<Order>('PATCH', `/orders/${id}/cancel`);
+  }
+  
+  // User Profile
+  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
+    return this.request<User>('PATCH', '/users/me', data);
+  }
+  
+  async getAddresses(): Promise<ApiResponse<Address[]>> {
+    return this.request<Address[]>('GET', '/users/me/addresses');
+  }
+  
+  async createAddress(request: CreateAddressRequest): Promise<ApiResponse<Address>> {
+    return this.request<Address>('POST', '/users/me/addresses', request);
+  }
+  
+  async deleteAddress(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>('DELETE', `/users/me/addresses/${id}`);
+  }
 }
-*/

@@ -357,7 +357,7 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ## 🗺️ Roadmap
 
-### Milestone 1: Customer Web App ✅ (Current)
+### Milestone 1: Customer Web App ✅ (Complete)
 - [x] Restaurant discovery
 - [x] Menu browsing
 - [x] Shopping cart
@@ -367,22 +367,24 @@ Comprehensive documentation is available in the `docs/` directory:
 - [x] Bilingual support
 - [x] Responsive design
 
-### Milestone 2: Backend API & Database 🔄 (Next)
-- [ ] NestJS API setup
-- [ ] PostgreSQL database with Prisma
-- [ ] Restaurant catalog API
-- [ ] User authentication API
-- [ ] Order management API
-- [ ] API documentation (OpenAPI)
-- [ ] Frontend API integration
+### Milestone 2: Backend API & Database ✅ (Complete)
+- [x] NestJS API setup
+- [x] PostgreSQL database with Prisma
+- [x] Restaurant catalog API
+- [x] User authentication API (JWT)
+- [x] Order management API
+- [x] API documentation (Swagger/OpenAPI)
+- [x] Frontend API integration
+- [x] Security (rate limiting, validation, encryption)
 
-### Milestone 3: Secure Authentication
-- [ ] JWT implementation
-- [ ] Password hashing (Argon2id)
+See `backend/README.md` for backend setup instructions.
+
+### Milestone 3: Secure Authentication Enhancements
 - [ ] Email verification
 - [ ] Password recovery
-- [ ] Session management
-- [ ] Security headers
+- [ ] Multi-factor authentication
+- [ ] Session management improvements
+- [ ] Audit logging
 
 ### Milestone 4: Restaurant Partner Portal
 - [ ] Restaurant registration
@@ -459,14 +461,16 @@ For questions or issues:
 
 | Metric | Status |
 |--------|--------|
-| Build | ✅ Passing |
-| Type Check | ✅ Passing |
-| Customer App | ✅ Complete (Demo) |
-| Backend API | ⏳ Planned |
-| Authentication | ⚠️ Demo Only |
+| Frontend Build | ✅ Passing |
+| Backend Structure | ✅ Complete |
+| Customer App | ✅ Complete (Demo + API ready) |
+| Backend API | ✅ Complete (Requires PostgreSQL) |
+| Authentication | ✅ JWT + bcrypt (Backend) / ⚠️ Demo (Frontend) |
+| Database Schema | ✅ Complete (Prisma) |
+| API Documentation | ✅ Swagger/OpenAPI |
 | Payment Integration | ⏳ Planned |
 | Documentation | ✅ Complete |
-| Tests | ⏳ Planned |
+| Tests | ⏳ Planned (Requires PostgreSQL) |
 
 ---
 
