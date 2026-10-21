@@ -22,8 +22,30 @@ This is the backend API for KhaanaDa, built with:
 ### Prerequisites
 
 - Node.js 18+ and npm
-- PostgreSQL 14+
+- PostgreSQL 14+ **OR** Supabase account (recommended)
 - Git
+
+### Option A: Supabase (Recommended) ⭐
+
+**Fastest way to get started — no local PostgreSQL needed!**
+
+👉 **[See Supabase Quick Start](./SUPABASE_QUICKSTART.md)** (5-minute setup)
+
+📚 **[Full Supabase Guide](../SUPABASE_SETUP_GUIDE.md)** (detailed instructions)
+
+```bash
+# After configuring Supabase:
+cd backend
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run db:test  # Verify connection
+```
+
+### Option B: Local PostgreSQL
+
+If you prefer running PostgreSQL locally:
 
 ### Installation
 
@@ -41,7 +63,7 @@ cp .env.example .env
 nano .env
 ```
 
-### Database Setup
+### Database Setup (Local PostgreSQL)
 
 ```bash
 # Start PostgreSQL (if not running)
