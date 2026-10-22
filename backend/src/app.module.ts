@@ -11,6 +11,7 @@ import { RestaurantPartnersModule } from './restaurant-partners/restaurant-partn
 import { RidersModule } from './riders/riders.module';
 import { OrdersModule } from './orders/orders.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { AdminModule } from './admin/admin.module';
 import { validateEnv } from './config/env.validation';
 
 @Module({
@@ -45,6 +46,7 @@ import { validateEnv } from './config/env.validation';
     RidersModule,
     OrdersModule,
     AddressesModule,
+    AdminModule,
   ],
   providers: [
     {

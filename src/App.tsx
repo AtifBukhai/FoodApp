@@ -23,6 +23,7 @@ import RiderDashboardPage from './pages/rider/DashboardPage';
 import RiderDeliveriesPage from './pages/rider/DeliveriesPage';
 import RiderEarningsPage from './pages/rider/EarningsPage';
 import RiderProfilePage from './pages/rider/ProfilePage';
+import AdminDashboardPage from './pages/admin/DashboardPage';
 import ScrollToTop from './components/ScrollToTop';
 import MobileNav from './components/MobileNav';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -93,6 +94,9 @@ function AppContent() {
           <Route path="/rider/deliveries" element={<ProtectedRoute><RiderDeliveriesPage /></ProtectedRoute>} />
           <Route path="/rider/earnings" element={<ProtectedRoute><RiderEarningsPage /></ProtectedRoute>} />
           <Route path="/rider/profile" element={<ProtectedRoute><RiderProfilePage /></ProtectedRoute>} />
+          
+          {/* Admin Dashboard - protected routes */}
+          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
