@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { CartItem, Order, Address, Language, User } from '../types';
 import { defaultAddresses, sampleOrders } from '../data';
+import { apiClient } from '../services/api';
 
 interface AppState {
   language: Language;
@@ -21,6 +22,8 @@ type Action =
   | { type: 'TOGGLE_CART'; payload?: boolean }
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'ADD_ORDER'; payload: Order }
+  | { type: 'SET_ORDERS'; payload: Order[] }
+  | { type: 'SET_ADDRESSES'; payload: Address[] }
   | { type: 'ADD_ADDRESS'; payload: Address }
   | { type: 'REMOVE_ADDRESS'; payload: string }
   | { type: 'SET_NOTIFICATION'; payload: AppState['notification'] };
@@ -73,6 +76,10 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, user: action.payload };
     case 'ADD_ORDER':
       return { ...state, orders: [action.payload, ...state.orders] };
+    case 'SET_ORDERS':
+      return { ...state, orders: action.payload };
+    case 'SET_ADDRESSES':
+      return { ...state, addresses: action.payload };
     case 'ADD_ADDRESS':
       return { ...state, addresses: [...state.addresses, action.payload] };
     case 'REMOVE_ADDRESS':
@@ -96,6 +103,38 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Restore user session and fetch data from API on mount
+  useEffect(() => {
+    const useApi = import.meta.env.VITE_USE_API === 'true';
+    const token = localStorage.getItem('khaanada_token');
+
+    if (useApi && token) {
+      // Fetch current user
+      apiClient.getCurrentUser().then(response => {
+        if (response.success && response.data) {
+          dispatch({ type: 'SET_USER', payload: response.data });
+          
+          // Fetch user's orders
+          apiClient.getOrders().then(ordersResponse => {
+            if (ordersResponse.success && ordersResponse.data) {
+              dispatch({ type: 'SET_ORDERS', payload: ordersResponse.data });
+            }
+          });
+          
+          // Fetch user's addresses
+          apiClient.getAddresses().then(addressesResponse => {
+            if (addressesResponse.success && addressesResponse.data) {
+              dispatch({ type: 'SET_ADDRESSES', payload: addressesResponse.data });
+            }
+          });
+        } else {
+          // Token invalid, clear it
+          localStorage.removeItem('khaanada_token');
+        }
+      });
+    }
+  }, []);
 
   const t = (key: string): string => {
     const keys = key.split('.');

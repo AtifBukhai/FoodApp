@@ -4,6 +4,7 @@ import { MapPin, CreditCard, Banknote, Check, ChevronRight, ArrowLeft } from 'lu
 import { useApp } from '../context/AppContext';
 import { Order } from '../types';
 import { restaurants } from '../data';
+import { apiClient } from '../services/api';
 
 export default function CheckoutPage() {
   const { state, dispatch, t, cartTotal } = useApp();
@@ -12,6 +13,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [newOrderId, setNewOrderId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   if (state.cart.length === 0 && !orderPlaced) {
     return (
@@ -31,32 +34,68 @@ export default function CheckoutPage() {
   const restaurantId = state.cart[0]?.menuItem.restaurantId;
   const restaurant = restaurants.find(r => r.id === restaurantId);
 
-  const handlePlaceOrder = () => {
-    const orderId = `KD-${Date.now().toString(36).toUpperCase()}`;
-    const newOrder: Order = {
-      id: orderId,
-      restaurantId: restaurantId || '',
-      restaurantName: restaurant?.name || 'Restaurant',
-      items: [...state.cart],
-      subtotal: cartTotal,
-      deliveryFee,
-      tax,
-      discount: 0,
-      total,
-      status: 'pending',
-      paymentMethod,
-      deliveryAddress: state.addresses.find(a => a.id === selectedAddress) || state.addresses[0],
-      createdAt: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 35 * 60000).toISOString(),
-      trackingEvents: [
-        { status: 'pending', timestamp: new Date().toISOString(), message: 'Order placed' },
-      ],
-    };
+  const handlePlaceOrder = async () => {
+    setLoading(true);
+    setError('');
 
-    dispatch({ type: 'ADD_ORDER', payload: newOrder });
-    dispatch({ type: 'CLEAR_CART' });
-    setNewOrderId(orderId);
-    setOrderPlaced(true);
+    const useApi = import.meta.env.VITE_USE_API === 'true';
+
+    if (useApi && state.user) {
+      // Use real backend API
+      try {
+        const response = await apiClient.createOrder({
+          restaurantId: restaurantId || '',
+          items: state.cart.map(item => ({
+            menuItemId: item.menuItem.id,
+            quantity: item.quantity,
+            notes: item.notes,
+          })),
+          deliveryAddressId: selectedAddress,
+          paymentMethod,
+        });
+
+        if (response.success && response.data) {
+          dispatch({ type: 'ADD_ORDER', payload: response.data });
+          dispatch({ type: 'CLEAR_CART' });
+          setNewOrderId(response.data.id);
+          setOrderPlaced(true);
+        } else {
+          setError(response.error || (state.language === 'en' ? 'Failed to place order' : 'آرڈر دینے میں ناکامی'));
+        }
+      } catch (err) {
+        setError(state.language === 'en' ? 'Network error. Please try again.' : 'نیٹ ورک کی خرابی۔ دوبارہ کوشش کریں۔');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Demo mode: create mock order
+      const orderId = `KD-${Date.now().toString(36).toUpperCase()}`;
+      const newOrder: Order = {
+        id: orderId,
+        restaurantId: restaurantId || '',
+        restaurantName: restaurant?.name || 'Restaurant',
+        items: [...state.cart],
+        subtotal: cartTotal,
+        deliveryFee,
+        tax,
+        discount: 0,
+        total,
+        status: 'pending',
+        paymentMethod,
+        deliveryAddress: state.addresses.find(a => a.id === selectedAddress) || state.addresses[0],
+        createdAt: new Date().toISOString(),
+        estimatedDelivery: new Date(Date.now() + 35 * 60000).toISOString(),
+        trackingEvents: [
+          { status: 'pending', timestamp: new Date().toISOString(), message: 'Order placed' },
+        ],
+      };
+
+      dispatch({ type: 'ADD_ORDER', payload: newOrder });
+      dispatch({ type: 'CLEAR_CART' });
+      setNewOrderId(orderId);
+      setOrderPlaced(true);
+      setLoading(false);
+    }
   };
 
   if (orderPlaced) {
@@ -241,12 +280,18 @@ export default function CheckoutPage() {
                   <span className="font-bold text-lg text-kh-orange">PKR {total}</span>
                 </div>
               </div>
+              {error && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <button
                 onClick={handlePlaceOrder}
-                className="w-full mt-6 bg-kh-orange text-white py-3.5 rounded-xl font-bold text-lg hover:bg-kh-orange-dark transition-colors flex items-center justify-center gap-2 shadow-lg shadow-orange-200"
+                disabled={loading}
+                className="w-full mt-6 bg-kh-orange text-white py-3.5 rounded-xl font-bold text-lg hover:bg-kh-orange-dark transition-colors flex items-center justify-center gap-2 shadow-lg shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t('placeOrder')}
-                <ChevronRight size={20} />
+                {loading ? (state.language === 'en' ? 'Placing Order...' : 'آرڈر دیا جا رہا ہے...') : t('placeOrder')}
+                {!loading && <ChevronRight size={20} />}
               </button>
               <p className="text-xs text-gray-400 text-center mt-3">
                 {state.language === 'en'
