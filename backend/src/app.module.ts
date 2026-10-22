@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
+import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
@@ -34,6 +35,7 @@ import { validateEnv } from './config/env.validation';
 
     // Feature modules
     PrismaModule,
+    EmailModule,
     AuthModule,
     UsersModule,
     RestaurantsModule,

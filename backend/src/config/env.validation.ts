@@ -1,5 +1,5 @@
 import { plainToInstance, Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, Min, validateSync } from 'class-validator';
+import { IsEnum, IsNumber, IsString, Min, IsOptional, IsBoolean } from 'class-validator';
 
 enum Environment {
   Development = 'development',
@@ -35,6 +35,27 @@ export class EnvironmentVariables {
   @IsNumber()
   @Min(1)
   THROTTLE_LIMIT: number;
+
+  // Email configuration (optional)
+  @IsOptional()
+  @IsString()
+  RESEND_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  EMAIL_FROM?: string;
+
+  @IsOptional()
+  @IsString()
+  EMAIL_FROM_NAME?: string;
+
+  @IsOptional()
+  @IsString()
+  FRONTEND_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  EMAIL_ENABLED?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
