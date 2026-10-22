@@ -46,6 +46,11 @@ enum PaymentMethod {
   ONLINE
 }
 
+enum PaymentProvider {
+  JAZZCASH
+  EASYPAISA
+}
+
 enum PaymentStatus {
   PENDING
   COMPLETED
@@ -306,6 +311,7 @@ model Order {
   // Relations
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
+  payment         Payment?
   
   // Timestamps
   createdAt       DateTime      @default(now())
@@ -353,6 +359,45 @@ model OrderStatusHistory {
   
   @@index([orderId])
   @@index([createdAt])
+}
+
+// ============================================================================
+// PAYMENTS
+// ============================================================================
+
+model Payment {
+  id                String          @id @default(uuid())
+  orderId           String          @unique
+  order             Order           @relation(fields: [orderId], references: [id])
+  
+  // Payment provider details
+  provider          PaymentProvider
+  providerTxnId     String?         // Transaction ID from gateway
+  amount            Int             // In paisa (PKR * 100)
+  currency          String          @default("PKR")
+  
+  // Status tracking
+  status            PaymentStatus   @default(PENDING)
+  gatewayStatus     String?         // Raw status from gateway
+  
+  // Request/Response tracking (for debugging and audit)
+  requestPayload    Json?           // Request sent to gateway
+  responsePayload   Json?           // Response from gateway
+  webhookPayload    Json?           // Webhook/callback data
+  
+  // Security
+  signatureVerified Boolean         @default(false)
+  
+  // Timestamps
+  initiatedAt       DateTime        @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  @@index([orderId])
+  @@index([provider])
+  @@index([status])
+  @@index([providerTxnId])
 }
 
 // ============================================================================

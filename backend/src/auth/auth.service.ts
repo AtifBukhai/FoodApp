@@ -10,6 +10,13 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { UserRole } from '@prisma/client';
+import { EmailService } from '../email/email.service';
+import {
+  welcomeEmailTemplate,
+  verificationEmailTemplate,
+  passwordResetEmailTemplate,
+  passwordChangedEmailTemplate,
+} from '../email/templates/email-templates';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +27,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -65,6 +73,40 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.role);
 
     this.logger.log(`User registered: ${user.email}`);
+
+    // Send welcome email
+    const frontendUrl = this.emailService.getFrontendUrl();
+    const welcomeEmail = welcomeEmailTemplate({
+      userName: user.name,
+      frontendUrl,
+    });
+
+    await this.emailService.sendEmail({
+      to: user.email,
+      subject: welcomeEmail.subject,
+      html: welcomeEmail.html,
+      text: welcomeEmail.text,
+    });
+
+    // Send verification email
+    const verificationToken = this.jwtService.sign(
+      { sub: user.id, type: 'verify' },
+      { expiresIn: '24h' }
+    );
+
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    const verificationEmail = verificationEmailTemplate({
+      userName: user.name,
+      frontendUrl,
+      verificationUrl,
+    });
+
+    await this.emailService.sendEmail({
+      to: user.email,
+      subject: verificationEmail.subject,
+      html: verificationEmail.html,
+      text: verificationEmail.text,
+    });
 
     return {
       user,
@@ -156,16 +198,38 @@ export class AuthService {
     });
 
     // Always return success to prevent email enumeration
-    // In production, this would send an email with a reset token
     if (user) {
-      // Generate a reset token (in production, store this in database with expiration)
+      // Generate a reset token
       const resetToken = this.jwtService.sign(
         { sub: user.id, type: 'reset' },
         { expiresIn: '1h' }
       );
 
-      this.logger.log(`[DEV] Password reset token for ${email}: ${resetToken}`);
-      // In production: send email with reset link containing this token
+      // Send password reset email
+      const frontendUrl = this.emailService.getFrontendUrl();
+      const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+      
+      const resetEmail = passwordResetEmailTemplate({
+        userName: user.name,
+        frontendUrl,
+        resetUrl,
+      });
+
+      const emailResult = await this.emailService.sendEmail({
+        to: user.email,
+        subject: resetEmail.subject,
+        html: resetEmail.html,
+        text: resetEmail.text,
+      });
+
+      if (!emailResult.success) {
+        this.logger.error(`Failed to send password reset email to ${user.email}: ${emailResult.error}`);
+      }
+
+      // Log token in development mode only (never in production)
+      if (!this.emailService.isProd()) {
+        this.logger.log(`[DEV] Password reset token for ${email}: ${resetToken}`);
+      }
     }
 
     return {
@@ -182,16 +246,40 @@ export class AuthService {
         throw new UnauthorizedException('Invalid reset token');
       }
 
+      // Get user details before updating
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, email: true, name: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
       // Hash the new password
       const passwordHash = await bcrypt.hash(newPassword, this.saltRounds);
 
       // Update user's password
       await this.prisma.user.update({
         where: { id: payload.sub },
-         { passwordHash },
+        data: { passwordHash },
       });
 
       this.logger.log(`Password reset for user: ${payload.sub}`);
+
+      // Send password changed confirmation email
+      const frontendUrl = this.emailService.getFrontendUrl();
+      const confirmationEmail = passwordChangedEmailTemplate({
+        userName: user.name,
+        frontendUrl,
+      });
+
+      await this.emailService.sendEmail({
+        to: user.email,
+        subject: confirmationEmail.subject,
+        html: confirmationEmail.html,
+        text: confirmationEmail.text,
+      });
 
       return { message: 'Password reset successfully' };
     } catch (error) {
@@ -247,8 +335,31 @@ export class AuthService {
       { expiresIn: '24h' }
     );
 
-    this.logger.log(`[DEV] Email verification token for ${user.email}: ${verificationToken}`);
-    // In production: send email with verification link containing this token
+    // Send verification email
+    const frontendUrl = this.emailService.getFrontendUrl();
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    
+    const verificationEmail = verificationEmailTemplate({
+      userName: user.name,
+      frontendUrl,
+      verificationUrl,
+    });
+
+    const emailResult = await this.emailService.sendEmail({
+      to: user.email,
+      subject: verificationEmail.subject,
+      html: verificationEmail.html,
+      text: verificationEmail.text,
+    });
+
+    if (!emailResult.success) {
+      this.logger.error(`Failed to send verification email to ${user.email}: ${emailResult.error}`);
+    }
+
+    // Log token in development mode only (never in production)
+    if (!this.emailService.isProd()) {
+      this.logger.log(`[DEV] Email verification token for ${user.email}: ${verificationToken}`);
+    }
 
     return { message: 'Verification email sent' };
   }
