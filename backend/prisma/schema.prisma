@@ -58,6 +58,15 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum DeliveryStatus {
+  ASSIGNED        // Assigned to rider, awaiting acceptance
+  ACCEPTED        // Rider accepted, heading to pickup
+  PICKED_UP       // Rider picked up order
+  DELIVERED       // Order delivered
+  CANCELLED       // Delivery cancelled
+  FAILED          // Delivery failed
+}
+
 // ============================================================================
 // USERS & AUTHENTICATION
 // ============================================================================
@@ -77,6 +86,7 @@ model User {
   addresses     Address[]
   orders        Order[]
   reviews       Review[]
+  rider         Rider?
   
   // Timestamps
   createdAt     DateTime  @default(now())
@@ -312,6 +322,7 @@ model Order {
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
   payment         Payment?
+  delivery        Delivery?
   
   // Timestamps
   createdAt       DateTime      @default(now())
@@ -426,4 +437,80 @@ model Review {
   @@unique([userId, restaurantId, orderId])
   @@index([restaurantId])
   @@index([userId])
+}
+
+// ============================================================================
+// RIDERS & DELIVERIES
+// ============================================================================
+
+model Rider {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  
+  // Rider-specific fields
+  vehicleType     String    // "motorcycle", "car", "bicycle"
+  vehicleNumber   String?
+  licenseNumber   String?
+  
+  // Approval & Status
+  isApproved      Boolean   @default(false)
+  isAvailable     Boolean   @default(false)
+  
+  // Location (optional, for dispatch)
+  currentLat      Float?
+  currentLng      Float?
+  lastLocationUpdate DateTime?
+  
+  // Performance
+  totalDeliveries Int       @default(0)
+  rating          Float     @default(0)
+  
+  // Relations
+  deliveries      Delivery[]
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  
+  @@index([userId])
+  @@index([isApproved])
+  @@index([isAvailable])
+}
+
+model Delivery {
+  id              String    @id @default(uuid())
+  orderId         String    @unique
+  order           Order     @relation(fields: [orderId], references: [id])
+  
+  riderId         String?
+  rider           Rider?    @relation(fields: [riderId], references: [id])
+  
+  // Delivery status
+  status          DeliveryStatus @default(ASSIGNED)
+  
+  // Timestamps for tracking
+  assignedAt      DateTime?
+  acceptedAt      DateTime?
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+  
+  // Earnings (all in paisa)
+  baseFee         Int       // In paisa
+  tip             Int       @default(0)
+  totalEarnings   Int       @default(0)
+  
+  // Notes
+  pickupNotes     String?
+  deliveryNotes   String?
+  issueReport     String?
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([orderId])
+  @@index([riderId])
+  @@index([status])
 }
