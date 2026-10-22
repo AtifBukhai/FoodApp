@@ -36,3 +36,29 @@ export class LoginDto {
   @IsString()
   password: string;
 }
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: 'ahmed@example.com' })
+  @IsEmail()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ example: 'reset-token-here' })
+  @IsString()
+  token: string;
+
+  @ApiProperty({ example: 'NewSecurePass123!' })
+  @IsString()
+  @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
+    message: 'Password must contain at least one uppercase, one lowercase, one number, and one special character',
+  })
+  newPassword: string;
+}
+
+export class VerifyEmailDto {
+  @ApiProperty({ example: 'verification-token-here' })
+  @IsString()
+  token: string;
+}

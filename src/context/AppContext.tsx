@@ -21,6 +21,7 @@ type Action =
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_CART'; payload?: boolean }
   | { type: 'SET_USER'; payload: User | null }
+  | { type: 'LOGOUT' }
   | { type: 'ADD_ORDER'; payload: Order }
   | { type: 'SET_ORDERS'; payload: Order[] }
   | { type: 'SET_ADDRESSES'; payload: Address[] }
@@ -74,6 +75,15 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, cartOpen: action.payload ?? !state.cartOpen };
     case 'SET_USER':
       return { ...state, user: action.payload };
+    case 'LOGOUT':
+      // Clear token from localStorage
+      localStorage.removeItem('khaanada_token');
+      return { 
+        ...state, 
+        user: null, 
+        orders: [], 
+        addresses: [] 
+      };
     case 'ADD_ORDER':
       return { ...state, orders: [action.payload, ...state.orders] };
     case 'SET_ORDERS':

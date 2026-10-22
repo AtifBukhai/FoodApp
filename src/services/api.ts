@@ -108,6 +108,14 @@ export interface ApiClient {
   logout(): Promise<ApiResponse<void>>;
   refreshToken(): Promise<ApiResponse<{ token: string }>>;
   getCurrentUser(): Promise<ApiResponse<User>>;
+  
+  // Password Recovery
+  forgotPassword(email: string): Promise<ApiResponse<{ message: string }>>;
+  resetPassword(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>>;
+  
+  // Email Verification
+  verifyEmail(token: string): Promise<ApiResponse<{ message: string }>>;
+  resendVerification(): Promise<ApiResponse<{ message: string }>>;
 
   // Restaurants
   getRestaurants(filters?: RestaurantFilters): Promise<ApiResponse<PaginatedResponse<Restaurant>>>;
@@ -226,6 +234,44 @@ class MockApiClient implements ApiClient {
       return { success: false, error: 'Not authenticated' };
     }
     return { success: true, data: this.currentUser };
+  }
+
+  // Password Recovery (Demo Mode)
+  async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    await this.delay();
+    // In demo mode, we always return success to prevent email enumeration
+    // In production, this would send an actual email
+    console.log(`[DEMO] Password reset requested for: ${email}`);
+    console.log(`[DEMO] Reset token: demo-reset-token-${Date.now()}`);
+    return { 
+      success: true, 
+      data: { message: 'If an account exists, reset instructions have been sent' }
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    await this.delay();
+    // In demo mode, accept any token
+    if (token.startsWith('demo-reset-token-')) {
+      return { success: true, data: { message: 'Password reset successfully' } };
+    }
+    return { success: false, error: 'Invalid or expired reset token' };
+  }
+
+  // Email Verification (Demo Mode)
+  async verifyEmail(token: string): Promise<ApiResponse<{ message: string }>> {
+    await this.delay();
+    if (token.startsWith('demo-verify-token-')) {
+      return { success: true, data: { message: 'Email verified successfully' } };
+    }
+    return { success: false, error: 'Invalid or expired verification token' };
+  }
+
+  async resendVerification(): Promise<ApiResponse<{ message: string }>> {
+    await this.delay();
+    console.log(`[DEMO] Verification email resent`);
+    console.log(`[DEMO] Verification token: demo-verify-token-${Date.now()}`);
+    return { success: true, data: { message: 'Verification email sent' } };
   }
 
   // Restaurants
@@ -553,6 +599,24 @@ class HttpApiClient implements ApiClient {
   
   async getCurrentUser(): Promise<ApiResponse<User>> {
     return this.request<User>('GET', '/users/me');
+  }
+
+  // Password Recovery
+  async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('POST', '/auth/forgot-password', { email });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('POST', '/auth/reset-password', { token, newPassword });
+  }
+
+  // Email Verification
+  async verifyEmail(token: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('POST', '/auth/verify-email', { token });
+  }
+
+  async resendVerification(): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('POST', '/auth/resend-verification');
   }
   
   // Restaurants

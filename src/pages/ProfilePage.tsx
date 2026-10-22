@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, MapPin, Package, LogOut, Globe, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { apiClient } from '../services/api';
 
 export default function ProfilePage() {
   const { state, dispatch, t } = useApp();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<'profile' | 'addresses' | 'settings'>('profile');
+  const [loggingOut, setLoggingOut] = useState(false);
 
   if (!state.user) {
     return (
@@ -20,9 +22,19 @@ export default function ProfilePage() {
     );
   }
 
-  const handleLogout = () => {
-    dispatch({ type: 'SET_USER', payload: null });
-    navigate('/');
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      // Call API logout (best effort - don't block on failure)
+      await apiClient.logout();
+    } catch (err) {
+      // Ignore errors - we still want to log out locally
+    } finally {
+      // Clear local state and redirect
+      dispatch({ type: 'LOGOUT' });
+      navigate('/login');
+      setLoggingOut(false);
+    }
   };
 
   const handleDeleteAddress = (id: string) => {
@@ -178,10 +190,13 @@ export default function ProfilePage() {
         <div className="mt-6">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 transition-colors"
+            disabled={loggingOut}
+            className="flex items-center gap-2 text-red-500 font-medium hover:text-red-700 transition-colors disabled:opacity-50"
           >
             <LogOut size={18} />
-            {t('logout')}
+            {loggingOut 
+              ? (state.language === 'en' ? 'Logging out...' : 'لاگ آؤٹ ہو رہا ہے...')
+              : t('logout')}
           </button>
         </div>
       </div>
