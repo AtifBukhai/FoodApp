@@ -70,7 +70,7 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  accessToken: string;
   refreshToken: string;
 }
 
@@ -177,7 +177,7 @@ class MockApiClient implements ApiClient {
       success: true,
       data: {
         user,
-        token: 'demo-jwt-token-' + Date.now(),
+        accessToken: 'demo-jwt-token-' + Date.now(),
         refreshToken: 'demo-refresh-token-' + Date.now(),
       },
     };
@@ -200,7 +200,7 @@ class MockApiClient implements ApiClient {
       success: true,
       data: {
         user,
-        token: 'demo-jwt-token-' + Date.now(),
+        accessToken: 'demo-jwt-token-' + Date.now(),
         refreshToken: 'demo-refresh-token-' + Date.now(),
       },
     };
@@ -529,7 +529,7 @@ class HttpApiClient implements ApiClient {
   async login(request: LoginRequest): Promise<ApiResponse<AuthResponse>> {
     const response = await this.request<AuthResponse>('POST', '/auth/login', request);
     if (response.success && response.data) {
-      this.setToken(response.data.token);
+      this.setToken(response.data.accessToken);
     }
     return response;
   }
@@ -537,7 +537,7 @@ class HttpApiClient implements ApiClient {
   async register(request: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
     const response = await this.request<AuthResponse>('POST', '/auth/register', request);
     if (response.success && response.data) {
-      this.setToken(response.data.token);
+      this.setToken(response.data.accessToken);
     }
     return response;
   }
