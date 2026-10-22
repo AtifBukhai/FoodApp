@@ -42,7 +42,7 @@ export default function LoginPage() {
 
       if (response.success && response.data) {
         // Store token
-        localStorage.setItem('khaanada_token', response.data.token);
+        localStorage.setItem('khaanada_token', response.data.accessToken);
         
         // Set user in context
         dispatch({ type: 'SET_USER', payload: response.data.user });
