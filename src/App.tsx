@@ -19,6 +19,10 @@ import PartnerDashboardPage from './pages/partner/DashboardPage';
 import PartnerRestaurantsPage from './pages/partner/RestaurantsPage';
 import PartnerRestaurantFormPage from './pages/partner/RestaurantFormPage';
 import PartnerOrdersPage from './pages/partner/OrdersPage';
+import RiderDashboardPage from './pages/rider/DashboardPage';
+import RiderDeliveriesPage from './pages/rider/DeliveriesPage';
+import RiderEarningsPage from './pages/rider/EarningsPage';
+import RiderProfilePage from './pages/rider/ProfilePage';
 import ScrollToTop from './components/ScrollToTop';
 import MobileNav from './components/MobileNav';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -83,6 +87,12 @@ function AppContent() {
           <Route path="/partner/restaurants/new" element={<ProtectedRoute><PartnerRestaurantFormPage /></ProtectedRoute>} />
           <Route path="/partner/restaurants/:id/edit" element={<ProtectedRoute><PartnerRestaurantFormPage /></ProtectedRoute>} />
           <Route path="/partner/orders" element={<ProtectedRoute><PartnerOrdersPage /></ProtectedRoute>} />
+          
+          {/* Rider Application - protected routes */}
+          <Route path="/rider/dashboard" element={<ProtectedRoute><RiderDashboardPage /></ProtectedRoute>} />
+          <Route path="/rider/deliveries" element={<ProtectedRoute><RiderDeliveriesPage /></ProtectedRoute>} />
+          <Route path="/rider/earnings" element={<ProtectedRoute><RiderEarningsPage /></ProtectedRoute>} />
+          <Route path="/rider/profile" element={<ProtectedRoute><RiderProfilePage /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
