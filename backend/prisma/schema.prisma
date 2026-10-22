@@ -87,6 +87,7 @@ model User {
   orders        Order[]
   reviews       Review[]
   rider         Rider?
+  auditLogs     AuditLog[] @relation("AuditActor")
   
   // Timestamps
   createdAt     DateTime  @default(now())
@@ -437,6 +438,41 @@ model Review {
   @@unique([userId, restaurantId, orderId])
   @@index([restaurantId])
   @@index([userId])
+}
+
+// ============================================================================
+// AUDIT LOGGING & PLATFORM CONFIGURATION
+// ============================================================================
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  actorId     String              // Admin who performed action
+  actor       User      @relation("AuditActor", fields: [actorId], references: [id])
+  
+  action      String              // "USER_SUSPEND", "RESTAURANT_APPROVE", etc.
+  targetType  String              // "User", "Restaurant", "Rider", "Order"
+  targetId    String              // ID of affected record
+  
+  details     Json?               // Additional context (safe, no secrets)
+  reason      String?             // Reason for action
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model PlatformConfig {
+  id          String    @id @default(uuid())
+  key         String    @unique
+  value       String
+  description String?
+  
+  updatedAt   DateTime  @updatedAt
+  updatedBy   String?
+  
+  @@index([key])
 }
 
 // ============================================================================
