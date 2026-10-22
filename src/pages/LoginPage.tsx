@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { apiClient } from '../services/api';
 
 export default function LoginPage() {
   const { state, dispatch, t } = useApp();
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,28 +18,52 @@ export default function LoginPage() {
     password: '',
   });
 
-  // NOTE: This is a development demo. In production, authentication would be
-  // handled by the backend API with proper security (Argon2id hashing, JWT tokens,
-  // HttpOnly cookies, CSRF protection, rate limiting, etc.)
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
 
-    // Demo: Create a mock user session
-    const mockUser = {
-      id: 'u1',
-      name: formData.name || 'Demo User',
-      email: formData.email || 'demo@khaanada.pk',
-      phone: formData.phone || '+92 300 1234567',
-      addresses: state.addresses,
-    };
+    try {
+      let response;
+      
+      if (isRegister) {
+        response = await apiClient.register({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+        });
+      } else {
+        response = await apiClient.login({
+          email: formData.email,
+          password: formData.password,
+        });
+      }
 
-    dispatch({ type: 'SET_USER', payload: mockUser });
-    dispatch({
-      type: 'SET_NOTIFICATION',
-      payload: { message: state.language === 'en' ? 'Welcome to KhaanaDa!' : 'خانا دا میں خوش آمدید!', type: 'success' },
-    });
+      if (response.success && response.data) {
+        // Store token
+        localStorage.setItem('khaanada_token', response.data.token);
+        
+        // Set user in context
+        dispatch({ type: 'SET_USER', payload: response.data.user });
+        
+        dispatch({
+          type: 'SET_NOTIFICATION',
+          payload: { 
+            message: state.language === 'en' ? 'Welcome to KhaanaDa!' : 'خانا دا میں خوش آمدید!', 
+            type: 'success' 
+          },
+        });
 
-    navigate('/');
+        navigate('/');
+      } else {
+        setError(response.error || (state.language === 'en' ? 'Authentication failed' : 'تصدیق ناکام ہوگئی'));
+      }
+    } catch (err) {
+      setError(state.language === 'en' ? 'Network error. Please try again.' : 'نیٹ ورک کی خرابی۔ دوبارہ کوشش کریں۔');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -144,11 +171,18 @@ export default function LoginPage() {
               </div>
             )}
 
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full bg-kh-orange text-white py-3 rounded-xl font-semibold hover:bg-kh-orange-dark transition-colors shadow-lg shadow-orange-200"
+              disabled={loading}
+              className="w-full bg-kh-orange text-white py-3 rounded-xl font-semibold hover:bg-kh-orange-dark transition-colors shadow-lg shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isRegister ? t('signUp') : t('signIn')}
+              {loading ? (state.language === 'en' ? 'Please wait...' : 'براہ کرم انتظار کریں...') : (isRegister ? t('signUp') : t('signIn'))}
             </button>
           </form>
 
