@@ -148,4 +148,108 @@ export class AuthService {
       refreshToken,
     };
   }
+
+  async forgotPassword(email: string) {
+    // Find user by email
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Always return success to prevent email enumeration
+    // In production, this would send an email with a reset token
+    if (user) {
+      // Generate a reset token (in production, store this in database with expiration)
+      const resetToken = this.jwtService.sign(
+        { sub: user.id, type: 'reset' },
+        { expiresIn: '1h' }
+      );
+
+      this.logger.log(`[DEV] Password reset token for ${email}: ${resetToken}`);
+      // In production: send email with reset link containing this token
+    }
+
+    return {
+      message: 'If an account exists with that email, reset instructions have been sent',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    try {
+      // Verify the reset token
+      const payload = this.jwtService.verify(token);
+      
+      if (payload.type !== 'reset') {
+        throw new UnauthorizedException('Invalid reset token');
+      }
+
+      // Hash the new password
+      const passwordHash = await bcrypt.hash(newPassword, this.saltRounds);
+
+      // Update user's password
+      await this.prisma.user.update({
+        where: { id: payload.sub },
+         { passwordHash },
+      });
+
+      this.logger.log(`Password reset for user: ${payload.sub}`);
+
+      return { message: 'Password reset successfully' };
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Reset token has expired');
+      }
+      throw new UnauthorizedException('Invalid reset token');
+    }
+  }
+
+  async verifyEmail(token: string) {
+    try {
+      // Verify the verification token
+      const payload = this.jwtService.verify(token);
+      
+      if (payload.type !== 'verify') {
+        throw new UnauthorizedException('Invalid verification token');
+      }
+
+      // Mark email as verified
+      await this.prisma.user.update({
+        where: { id: payload.sub },
+         { emailVerified: true },
+      });
+
+      this.logger.log(`Email verified for user: ${payload.sub}`);
+
+      return { message: 'Email verified successfully' };
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Verification token has expired');
+      }
+      throw new UnauthorizedException('Invalid verification token');
+    }
+  }
+
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.emailVerified) {
+      return { message: 'Email already verified' };
+    }
+
+    // Generate verification token
+    const verificationToken = this.jwtService.sign(
+      { sub: user.id, type: 'verify' },
+      { expiresIn: '24h' }
+    );
+
+    this.logger.log(`[DEV] Email verification token for ${user.email}: ${verificationToken}`);
+    // In production: send email with verification link containing this token
+
+    return { message: 'Verification email sent' };
+  }
 }
