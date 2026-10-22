@@ -15,6 +15,10 @@ import PartnerPage from './pages/PartnerPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
+import PartnerDashboardPage from './pages/partner/DashboardPage';
+import PartnerRestaurantsPage from './pages/partner/RestaurantsPage';
+import PartnerRestaurantFormPage from './pages/partner/RestaurantFormPage';
+import PartnerOrdersPage from './pages/partner/OrdersPage';
 import ScrollToTop from './components/ScrollToTop';
 import MobileNav from './components/MobileNav';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -72,6 +76,13 @@ function AppContent() {
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          
+          {/* Restaurant Partner Portal - protected routes */}
+          <Route path="/partner/dashboard" element={<ProtectedRoute><PartnerDashboardPage /></ProtectedRoute>} />
+          <Route path="/partner/restaurants" element={<ProtectedRoute><PartnerRestaurantsPage /></ProtectedRoute>} />
+          <Route path="/partner/restaurants/new" element={<ProtectedRoute><PartnerRestaurantFormPage /></ProtectedRoute>} />
+          <Route path="/partner/restaurants/:id/edit" element={<ProtectedRoute><PartnerRestaurantFormPage /></ProtectedRoute>} />
+          <Route path="/partner/orders" element={<ProtectedRoute><PartnerOrdersPage /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

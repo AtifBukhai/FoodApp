@@ -7,6 +7,7 @@ import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
+import { RestaurantPartnersModule } from './restaurant-partners/restaurant-partners.module';
 import { OrdersModule } from './orders/orders.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { validateEnv } from './config/env.validation';
@@ -39,6 +40,7 @@ import { validateEnv } from './config/env.validation';
     AuthModule,
     UsersModule,
     RestaurantsModule,
+    RestaurantPartnersModule,
     OrdersModule,
     AddressesModule,
   ],
